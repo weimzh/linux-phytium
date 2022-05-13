@@ -1,4 +1,4 @@
-linux-4.19.241-phytium (4.19.241-phytium-1) bullseye; urgency=low
+linux-4.19.242-phytium (4.19.242-phytium-1) bullseye; urgency=low
 
   * Custom built Linux kernel.
 
