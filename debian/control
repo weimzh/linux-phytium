@@ -2,7 +2,7 @@ Source: linux-4.19.242-phytium
 Section: kernel
 Priority: optional
 Maintainer: Wei Mingzhi <whistler@member.fsf.org>
-Build-Depends: bc, kmod, cpio
+Build-Depends: bc, kmod, cpio, flex, bison, libssl-dev
 Homepage: http://www.kernel.org/
 
 Package: linux-image-4.19.242-phytium
