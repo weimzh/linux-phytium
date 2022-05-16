@@ -1,10 +1,10 @@
 #!/usr/bin/make -f
 
 build:
-	$(MAKE) KERNELRELEASE=4.19.242-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC=
+	$(MAKE) KERNELRELEASE=4.19.243-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC=
 
 binary-arch:
-	$(MAKE) KERNELRELEASE=4.19.242-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC= intdeb-pkg
+	$(MAKE) KERNELRELEASE=4.19.243-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC= intdeb-pkg
 
 clean:
 	rm -rf debian/*tmp debian/files
