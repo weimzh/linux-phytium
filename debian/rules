@@ -1,7 +1,10 @@
 #!/usr/bin/make -f
 
-build:
-	$(MAKE) KERNELRELEASE=4.19.243-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC=
+.config:
+	$(MAKE) KERNELRELEASE=4.19.243-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC= defconfig
+
+build: .config
+	$(MAKE) -j$(shell nproc) KERNELRELEASE=4.19.243-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC=
 
 binary-arch:
 	$(MAKE) KERNELRELEASE=4.19.243-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC= intdeb-pkg
