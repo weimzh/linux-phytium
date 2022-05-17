@@ -14,6 +14,7 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/acpi.h>
 #include <linux/hwmon.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
@@ -133,6 +134,15 @@ static const struct thermal_zone_of_device_ops scpi_sensor_ops = {
 	.get_temp = scpi_read_temp,
 };
 
+#ifdef CONFIG_ACPI
+static const struct acpi_device_id scpi_acpi_match[] = {
+	{ "PHYT000D", 0 },
+	{ "FTEC0003", 0 },
+	{ }
+};
+MODULE_DEVICE_TABLE(acpi, scpi_acpi_match);
+#endif
+
 static const struct of_device_id scpi_of_match[] = {
 	{.compatible = "arm,scpi-sensors", .data = &scpi_scale},
 	{.compatible = "amlogic,meson-gxbb-scpi-sensors", .data = &gxbb_scpi_scale},
@@ -179,12 +189,17 @@ static int scpi_hwmon_probe(struct platform_device *pdev)
 
 	scpi_sensors->scpi_ops = scpi_ops;
 
-	of_id = of_match_device(scpi_of_match, &pdev->dev);
-	if (!of_id) {
-		dev_err(&pdev->dev, "Unable to initialize scpi-hwmon data\n");
-		return -ENODEV;
+	if (pdev->dev.of_node) {
+		of_id = of_match_device(scpi_of_match, &pdev->dev);
+		if (!of_id) {
+			dev_err(&pdev->dev, "Unable to initialize scpi-hwmon data\n");
+			return -ENODEV;
+		}
+		scale = of_id->data;
+	} else {
+		/* This only happens on Phytium and must be arm,scpi-sensors. */
+		scale = scpi_scale;
 	}
-	scale = of_id->data;
 
 	for (i = 0, idx = 0; i < nr_sensors; i++) {
 		struct sensor_data *sensor = &scpi_sensors->data[idx];
@@ -308,6 +323,7 @@ static struct platform_driver scpi_hwmon_platdrv = {
 	.driver = {
 		.name	= "scpi-hwmon",
 		.of_match_table = scpi_of_match,
+		.acpi_match_table = ACPI_PTR(scpi_acpi_match),
 	},
 	.probe		= scpi_hwmon_probe,
 };

@@ -27,6 +27,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/acpi.h>
 #include <linux/bitmap.h>
 #include <linux/bitfield.h>
 #include <linux/device.h>
@@ -665,12 +666,23 @@ static struct scpi_dvfs_info *scpi_dvfs_get_info(u8 domain)
 static int scpi_dev_domain_id(struct device *dev)
 {
 	struct of_phandle_args clkspec;
+	u32 domain_id;
 
-	if (of_parse_phandle_with_args(dev->of_node, "clocks", "#clock-cells",
-				       0, &clkspec))
-		return -EINVAL;
+	if (dev->of_node) {
+		if (of_parse_phandle_with_args(dev->of_node, "clocks", "#clock-cells",
+					       0, &clkspec))
+			goto out;
+		return clkspec.args[0];
+	} else if (has_acpi_companion(dev)) {
+		if (device_property_read_u32(dev, "clock-domain", &domain_id)) {
+			dev_warn(dev, "failed to get domain_id  for scpi dev, reset it to 0\n");
+			domain_id = 0;
+		}
+		return domain_id;
+	}
 
-	return clkspec.args[0];
+out:
+	return -EINVAL;
 }
 
 static struct scpi_dvfs_info *scpi_dvfs_info(struct device *dev)
@@ -910,7 +922,103 @@ static const struct of_device_id legacy_scpi_of_match[] = {
 	{},
 };
 
-static int scpi_probe(struct platform_device *pdev)
+#ifdef CONFIG_ACPI
+static int scpi_probe_acpi(struct platform_device *pdev)
+{
+	int ret, count;
+	struct device *dev = &pdev->dev;
+	struct fwnode_handle *np = dev_fwnode(&(pdev->dev));
+	u64 shmem_start, shmem_size;
+	struct scpi_chan *pchan;
+	struct mbox_client *cl;
+
+	scpi_info = devm_kzalloc(dev, sizeof(*scpi_info), GFP_KERNEL);
+	if (!scpi_info)
+		return -ENOMEM;
+
+	/* XXX: Support only one channel on Phytium right now. */
+	count = 1;
+	scpi_info->is_legacy = false;
+	scpi_info->channels = devm_kcalloc(dev, count, sizeof(struct scpi_chan),
+					   GFP_KERNEL);
+	if (!scpi_info->channels)
+		return -ENOMEM;
+
+	ret = devm_add_action(dev, scpi_free_channels, scpi_info);
+	if (ret)
+		return ret;
+
+	for (; scpi_info->num_chans < count; scpi_info->num_chans++) {
+		fwnode_property_read_u64(np, "shmem_start", &shmem_start);
+		fwnode_property_read_u64(np, "shmem_size", &shmem_size);
+
+		pchan = scpi_info->channels + scpi_info->num_chans;
+		pchan->rx_payload = devm_ioremap(dev, shmem_start, shmem_size);
+		if (!pchan->rx_payload) {
+			dev_err(dev, "failed to ioremap SCPI payload\n");
+			return -EADDRNOTAVAIL;
+		}
+		pchan->tx_payload = pchan->rx_payload + (shmem_size >> 1);
+
+		cl = &pchan->cl;
+		cl->dev = dev;
+		cl->rx_callback = scpi_handle_remote_msg;
+		cl->tx_prepare = scpi_tx_prepare;
+		cl->tx_block = true;
+		cl->tx_tout = 20;
+		cl->knows_txdone = false;
+
+		INIT_LIST_HEAD(&pchan->rx_pending);
+		INIT_LIST_HEAD(&pchan->xfers_list);
+		spin_lock_init(&pchan->rx_lock);
+		mutex_init(&pchan->xfers_lock);
+
+		ret = scpi_alloc_xfer_list(dev, pchan);
+		if (!ret) {
+			pchan->chan = mbox_request_channel(cl, scpi_info->num_chans);
+			if (!IS_ERR(pchan->chan))
+				continue;
+			ret = PTR_ERR(pchan->chan);
+			if (ret != -EPROBE_DEFER)
+				dev_err(dev, "failed to get channel%d err %d\n",
+					scpi_info->num_chans, ret);
+		}
+		return ret;
+	}
+
+	scpi_info->commands = scpi_std_commands;
+
+	platform_set_drvdata(pdev, scpi_info);
+
+	ret = scpi_init_versions(scpi_info);
+	if (ret) {
+		dev_err(dev, "incorrect or no SCP firmware found\n");
+		return ret;
+	}
+
+	dev_info(dev, "SCP Protocol %lu.%lu Firmware %lu.%lu.%lu version\n",
+		 FIELD_GET(PROTO_REV_MAJOR_MASK, scpi_info->protocol_version),
+		 FIELD_GET(PROTO_REV_MINOR_MASK, scpi_info->protocol_version),
+		 FIELD_GET(FW_REV_MAJOR_MASK, scpi_info->firmware_version),
+		 FIELD_GET(FW_REV_MINOR_MASK, scpi_info->firmware_version),
+		 FIELD_GET(FW_REV_PATCH_MASK, scpi_info->firmware_version));
+
+	scpi_info->scpi_ops = &scpi_ops;
+
+	ret = devm_device_add_groups(dev, versions_groups);
+	if (ret)
+		dev_err(dev, "unable to create sysfs version group\n");
+
+	return 0;
+}
+#else
+static int scpi_probe_acpi(struct platform_device *pdev)
+{
+	return 0;
+}
+#endif
+
+static int scpi_probe_dt(struct platform_device *pdev)
 {
 	int count, idx, ret;
 	struct resource res;
@@ -1031,6 +1139,27 @@ static int scpi_probe(struct platform_device *pdev)
 	return devm_of_platform_populate(dev);
 }
 
+static int scpi_probe(struct platform_device *pdev)
+{
+	int ret = 0;
+
+	if (pdev->dev.of_node)
+		ret = scpi_probe_dt(pdev);
+	else if (has_acpi_companion(&pdev->dev))
+		ret = scpi_probe_acpi(pdev);
+
+	return ret;
+}
+
+#ifdef CONFIG_ACPI
+static const struct acpi_device_id scpi_acpi_match[] = {
+	{ "PHYT0008", 0 },
+	{ "FTSC0001", 0 },
+	{ },
+};
+MODULE_DEVICE_TABLE(acpi, scpi_acpi_match);
+#endif
+
 static const struct of_device_id scpi_of_match[] = {
 	{.compatible = "arm,scpi"},
 	{.compatible = "arm,scpi-pre-1.0"},
@@ -1043,6 +1172,7 @@ static struct platform_driver scpi_driver = {
 	.driver = {
 		.name = "scpi_protocol",
 		.of_match_table = scpi_of_match,
+		.acpi_match_table = ACPI_PTR(scpi_acpi_match),
 	},
 	.probe = scpi_probe,
 	.remove = scpi_remove,

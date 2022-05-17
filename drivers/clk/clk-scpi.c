@@ -16,6 +16,8 @@
  * this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/acpi.h>
+#include <linux/clkdev.h>
 #include <linux/clk-provider.h>
 #include <linux/device.h>
 #include <linux/err.h>
@@ -267,12 +269,126 @@ static int scpi_clocks_remove(struct platform_device *pdev)
 		cpufreq_dev = NULL;
 	}
 
-	for_each_available_child_of_node(np, child)
-		of_clk_del_provider(np);
+	if (np) {
+		for_each_available_child_of_node(np, child)
+			of_clk_del_provider(np);
+	}
+
 	return 0;
 }
 
-static int scpi_clocks_probe(struct platform_device *pdev)
+#ifdef CONFIG_ACPI
+static int scpi_clk_add_acpi(struct device *dev, struct fwnode_handle *np)
+{
+	int idx, count, err, ret = 0;
+	const char **names;
+	u32 *clk;
+
+	count = fwnode_property_read_string_array(np, "clock-output-names", NULL, 0);
+	if (count < 0) {
+		dev_err(dev, "scpi-dvfs-clock: invalid clock output count\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	names = kcalloc(count, sizeof(*names), GFP_KERNEL);
+	if (!names) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	err = fwnode_property_read_string_array(np, "clock-output-names",
+						names, count);
+	if (err < 0) {
+		dev_err(dev, "error read clock-output-names\n");
+		ret = -EINVAL;
+		goto free;
+	}
+
+	clk = kcalloc(count, sizeof(*clk), GFP_KERNEL);
+	if (!clk) {
+		ret = -ENOMEM;
+		goto free;
+	}
+	err = fwnode_property_read_u32_array(np, "clock-indices",
+					     clk, count);
+	if (err < 0) {
+		dev_err(dev, "error read clock-indices\n");
+		ret = -EINVAL;
+		goto free2;
+	}
+
+	for (idx = 0; idx < count; idx++) {
+		struct scpi_clk *sclk;
+		const char *name;
+
+		sclk = devm_kzalloc(dev, sizeof(*sclk), GFP_KERNEL);
+		if (!sclk) {
+			ret = -ENOMEM;
+			goto free2;
+		}
+
+		name = names[idx];
+		sclk->id = clk[idx];
+
+		/* Only support scpi-dvfs-clocks right now. */
+		err = scpi_clk_ops_init(dev, &scpi_clk_match[0], sclk, name);
+		if (!err)
+			ret = clk_hw_register_clkdev(&sclk->hw, name, NULL);
+		if (ret || err) {
+			dev_err(dev, "failed to register clock '%s'\n", name);
+			goto free2;
+		}
+
+		dev_dbg(dev, "Registered clock '%s'\n", name);
+	}
+
+free2:
+	kfree(clk);
+free:
+	kfree(names);
+out:
+	return ret;
+}
+
+static int scpi_clocks_probe_acpi(struct platform_device *pdev)
+{
+	int ret;
+	struct device *dev = &pdev->dev;
+	struct fwnode_handle *child, *np = dev->fwnode;
+	const char *str;
+
+	if (!get_scpi_ops())
+		return -EPROBE_DEFER;
+
+	fwnode_for_each_available_child_node(np, child) {
+		ret = fwnode_property_read_string(child, "compatible", &str);
+		if (strcmp(str, "arm,scpi-dvfs-clocks"))
+			continue;
+
+		ret = scpi_clk_add_acpi(dev, child);
+		if (ret) {
+			scpi_clocks_remove(pdev);
+			fwnode_handle_put(child);
+			return ret;
+		}
+
+		/* Add the virtual cpufreq device if it's DVFS clock provider */
+		cpufreq_dev = platform_device_register_simple("scpi-cpufreq",
+							      -1, NULL, 0);
+		if (IS_ERR(cpufreq_dev))
+			pr_warn("unable to register cpufreq device");
+	}
+
+	return 0;
+}
+#else
+static int scpi_clocks_probe_acpi(struct platform_device *pdev)
+{
+	return 0;
+}
+#endif
+
+static int scpi_clocks_probe_dt(struct platform_device *pdev)
 {
 	int ret;
 	struct device *dev = &pdev->dev;
@@ -304,6 +420,27 @@ static int scpi_clocks_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static int scpi_clocks_probe(struct platform_device *pdev)
+{
+	int ret = 0;
+
+	if (pdev->dev.of_node)
+		ret = scpi_clocks_probe_dt(pdev);
+	else if (has_acpi_companion(&pdev->dev))
+		ret = scpi_clocks_probe_acpi(pdev);
+
+	return ret;
+}
+
+#ifdef CONFIG_ACPI
+static const struct acpi_device_id scpi_clocks_acpi_match[] = {
+	{ "PHYT8001", 0 },
+	{ "FTCK0001", 0 },
+	{ }
+};
+MODULE_DEVICE_TABLE(acpi, scpi_clocks_acpi_match);
+#endif
+
 static const struct of_device_id scpi_clocks_ids[] = {
 	{ .compatible = "arm,scpi-clocks", },
 	{}
@@ -314,6 +451,7 @@ static struct platform_driver scpi_clocks_driver = {
 	.driver	= {
 		.name = "scpi_clocks",
 		.of_match_table = scpi_clocks_ids,
+		.acpi_match_table = ACPI_PTR(scpi_clocks_acpi_match),
 	},
 	.probe = scpi_clocks_probe,
 	.remove = scpi_clocks_remove,
