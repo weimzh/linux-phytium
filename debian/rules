@@ -10,7 +10,7 @@ binary-arch:
 	$(MAKE) KERNELRELEASE=4.19.243-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC= intdeb-pkg
 
 clean:
-	rm -rf debian/*tmp debian/files
 	$(MAKE) clean
+	rm -rf debian/*tmp debian/files .config .version Module.symvers arch/arm64/include/generated/ include/config/ include/generated/
 
 binary: binary-arch
