@@ -285,24 +285,84 @@ int mbox_send_message(struct mbox_chan *chan, void *mssg)
 }
 EXPORT_SYMBOL_GPL(mbox_send_message);
 
-/**
- * mbox_request_channel - Request a mailbox channel.
- * @cl: Identity of the client requesting the channel.
- * @index: Index of mailbox specifier in 'mboxes' property.
- *
- * The Client specifies its requirements and capabilities while asking for
- * a mailbox channel. It can't be called from atomic context.
- * The channel is exclusively allocated and can't be used by another
- * client before the owner calls mbox_free_channel.
- * After assignment, any packet received on this channel will be
- * handed over to the client via the 'rx_callback'.
- * The framework holds reference to the client, so the mbox_client
- * structure shouldn't be modified until the mbox_free_channel returns.
- *
- * Return: Pointer to the channel assigned to the client if successful.
- *		ERR_PTR for request failure.
- */
-struct mbox_chan *mbox_request_channel(struct mbox_client *cl, int index)
+
+#ifdef CONFIG_ACPI
+struct mbox_chan *mbox_request_channel_acpi(struct mbox_client *cl, int index)
+{
+	struct device *dev = cl->dev;
+	struct mbox_controller *mbox;
+	struct fwnode_reference_args fwnode_args;
+	struct mbox_chan *chan;
+	unsigned long flags;
+	int ret;
+
+	if (!dev) {
+		pr_debug("%s: No owner device node\n", __func__);
+		return ERR_PTR(-ENODEV);
+	}
+
+	mutex_lock(&con_mutex);
+
+	if (fwnode_property_get_reference_args(dev->fwnode, "mbox", NULL,
+					       0, 0, &fwnode_args)) {
+		dev_dbg(dev, "%s: can't parse \"mbox\" property\n", __func__);
+		mutex_unlock(&con_mutex);
+		return ERR_PTR(-ENODEV);
+	}
+
+	chan = ERR_PTR(-EPROBE_DEFER);
+	list_for_each_entry(mbox, &mbox_cons, node) {
+		if (mbox->dev->fwnode == fwnode_args.fwnode) {
+			chan = &(mbox->chans[0]);
+			break;
+		}
+	}
+
+	fwnode_handle_put(fwnode_args.fwnode);
+	if (IS_ERR(chan)) {
+		mutex_unlock(&con_mutex);
+		return chan;
+	}
+
+	if (chan->cl || !try_module_get(mbox->dev->driver->owner)) {
+		dev_dbg(dev, "%s: mailbox not free\n", __func__);
+		mutex_unlock(&con_mutex);
+		return ERR_PTR(-EBUSY);
+	}
+
+	spin_lock_irqsave(&chan->lock, flags);
+	chan->msg_free = 0;
+	chan->msg_count = 0;
+	chan->active_req = NULL;
+	chan->cl = cl;
+	init_completion(&chan->tx_complete);
+
+	if (chan->txdone_method	== TXDONE_BY_POLL && cl->knows_txdone)
+		chan->txdone_method = TXDONE_BY_ACK;
+
+	spin_unlock_irqrestore(&chan->lock, flags);
+
+	if (chan->mbox->ops->startup) {
+		ret = chan->mbox->ops->startup(chan);
+
+		if (ret) {
+			dev_err(dev, "Unable to startup the chan (%d)\n", ret);
+			mbox_free_channel(chan);
+			chan = ERR_PTR(ret);
+		}
+	}
+
+	mutex_unlock(&con_mutex);
+	return chan;
+}
+#else
+struct mbox_chan *mbox_request_channel_acpi(struct mbox_client *cl, int index)
+{
+	return ERR_PTR(-ENODEV);
+}
+#endif
+
+struct mbox_chan *mbox_request_channel_dt(struct mbox_client *cl, int index)
 {
 	struct device *dev = cl->dev;
 	struct mbox_controller *mbox;
@@ -370,6 +430,32 @@ struct mbox_chan *mbox_request_channel(struct mbox_client *cl, int index)
 	mutex_unlock(&con_mutex);
 	return chan;
 }
+
+/**
+ * mbox_request_channel - Request a mailbox channel.
+ * @cl: Identity of the client requesting the channel.
+ * @index: Index of mailbox specifier in 'mboxes' property.
+ *
+ * The Client specifies its requirements and capabilities while asking for
+ * a mailbox channel. It can't be called from atomic context.
+ * The channel is exclusively allocated and can't be used by another
+ * client before the owner calls mbox_free_channel.
+ * After assignment, any packet received on this channel will be
+ * handed over to the client via the 'rx_callback'.
+ * The framework holds reference to the client, so the mbox_client
+ * structure shouldn't be modified until the mbox_free_channel returns.
+ *
+ * Return: Pointer to the channel assigned to the client if successful.
+ *		ERR_PTR for request failure.
+ */
+struct mbox_chan *mbox_request_channel(struct mbox_client *cl, int index)
+{
+	if (cl->dev && cl->dev->of_node)
+		return mbox_request_channel_dt(cl, index);
+	else
+		return mbox_request_channel_acpi(cl, index);
+}
+
 EXPORT_SYMBOL_GPL(mbox_request_channel);
 
 struct mbox_chan *mbox_request_channel_byname(struct mbox_client *cl,
