@@ -209,7 +209,7 @@ void rtw_report_sec_ie(_adapter *adapter, u8 authmode, u8 *sec_ie)
 
 		wrqu.data.length = (wrqu.data.length < IW_CUSTOM_MAX) ? wrqu.data.length : IW_CUSTOM_MAX;
 
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 		wireless_send_event(adapter->pnetdev, IWEVCUSTOM, &wrqu, buff);
 #endif
 
@@ -242,7 +242,7 @@ void rtw_indicate_sta_assoc_event(_adapter *padapter, struct sta_info *psta)
 
 	RTW_INFO("+rtw_indicate_sta_assoc_event\n");
 
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	wireless_send_event(padapter->pnetdev, IWEVREGISTERED, &wrqu, NULL);
 #endif
 
@@ -269,7 +269,7 @@ void rtw_indicate_sta_disassoc_event(_adapter *padapter, struct sta_info *psta)
 
 	RTW_INFO("+rtw_indicate_sta_disassoc_event\n");
 
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	wireless_send_event(padapter->pnetdev, IWEVEXPIRED, &wrqu, NULL);
 #endif
 

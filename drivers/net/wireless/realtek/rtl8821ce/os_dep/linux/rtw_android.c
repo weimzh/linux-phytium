@@ -661,11 +661,14 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		ret = -ENOMEM;
 		goto exit;
 	}
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)) || \
+    ( (LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)) && \
+	( defined(RHEL_RELEASE_CODE) || defined(CENTOS_RELEASE_CODE) ) )
 	if (!access_ok(priv_cmd.buf, priv_cmd.total_len)) {
-	#else
+#else
 	if (!access_ok(VERIFY_READ, priv_cmd.buf, priv_cmd.total_len)) {
-	#endif
+#endif
 		RTW_INFO("%s: failed to access memory\n", __FUNCTION__);
 		ret = -EFAULT;
 		goto exit;

@@ -116,7 +116,7 @@ static void indicate_wx_custom_event(_adapter *padapter, char *msg)
 	wrqu.data.length = strlen(msg);
 
 	RTW_INFO("%s %s\n", __FUNCTION__, buff);
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	wireless_send_event(padapter->pnetdev, IWEVCUSTOM, &wrqu, buff);
 #endif
 
@@ -149,7 +149,7 @@ static void request_wps_pbc_event(_adapter *padapter)
 
 	RTW_INFO("%s\n", __FUNCTION__);
 
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	wireless_send_event(padapter->pnetdev, IWEVCUSTOM, &wrqu, buff);
 #endif
 
@@ -189,7 +189,7 @@ void indicate_wx_scan_complete_event(_adapter *padapter)
 	_rtw_memset(&wrqu, 0, sizeof(union iwreq_data));
 
 	/* RTW_INFO("+rtw_indicate_wx_scan_complete_event\n"); */
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	wireless_send_event(padapter->pnetdev, SIOCGIWSCAN, &wrqu, NULL);
 #endif
 }
@@ -213,7 +213,7 @@ void rtw_indicate_wx_assoc_event(_adapter *padapter)
 		_rtw_memcpy(wrqu.ap_addr.sa_data, pmlmepriv->cur_network.network.MacAddress, ETH_ALEN);
 
 	RTW_PRINT("assoc success\n");
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	wireless_send_event(padapter->pnetdev, SIOCGIWAP, &wrqu, NULL);
 #endif
 }
@@ -227,7 +227,7 @@ void rtw_indicate_wx_disassoc_event(_adapter *padapter)
 	wrqu.ap_addr.sa_family = ARPHRD_ETHER;
 	_rtw_memset(wrqu.ap_addr.sa_data, 0, ETH_ALEN);
 
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	RTW_PRINT("indicate disassoc\n");
 	wireless_send_event(padapter->pnetdev, SIOCGIWAP, &wrqu, NULL);
 #endif
@@ -2943,7 +2943,7 @@ static int rtw_wx_set_auth(struct net_device *dev,
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
 	struct iw_param *param = (struct iw_param *)&(wrqu->param);
 #ifdef CONFIG_WAPI_SUPPORT
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 	struct security_priv *psecuritypriv = &padapter->securitypriv;
@@ -2956,7 +2956,7 @@ static int rtw_wx_set_auth(struct net_device *dev,
 
 	case IW_AUTH_WPA_VERSION:
 #ifdef CONFIG_WAPI_SUPPORT
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 		padapter->wapiInfo.bWapiEnable = false;
 		if (value == IW_AUTH_WAPI_VERSION_1) {
 			padapter->wapiInfo.bWapiEnable = true;
@@ -2978,7 +2978,7 @@ static int rtw_wx_set_auth(struct net_device *dev,
 		break;
 	case IW_AUTH_KEY_MGMT:
 #ifdef CONFIG_WAPI_SUPPORT
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 		RTW_INFO("rtw_wx_set_auth: IW_AUTH_KEY_MGMT case\n");
 		if (value == IW_AUTH_KEY_MGMT_WAPI_PSK)
 			padapter->wapiInfo.bWapiPSK = true;
@@ -3071,7 +3071,7 @@ static int rtw_wx_set_auth(struct net_device *dev,
 		break;
 
 #ifdef CONFIG_WAPI_SUPPORT
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	case IW_AUTH_WAPI_ENABLED:
 		break;
 #endif
@@ -3129,7 +3129,7 @@ static int rtw_wx_set_enc_ext(struct net_device *dev,
 		break;
 #endif /* CONFIG_IEEE80211W */
 #ifdef CONFIG_WAPI_SUPPORT
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 	case IW_ENCODE_ALG_SM4:
 		alg_name = "SMS4";
 		_rtw_memcpy(param->sta_addr, pext->addr.sa_data, ETH_ALEN);
@@ -3162,11 +3162,11 @@ static int rtw_wx_set_enc_ext(struct net_device *dev,
 
 	if (pext->ext_flags & IW_ENCODE_EXT_RX_SEQ_VALID) {
 #ifdef CONFIG_WAPI_SUPPORT
-#ifdef CONFIG_WIRELESS_EXT
+#ifndef CONFIG_IOCTL_CFG80211
 		if (pext->alg == IW_ENCODE_ALG_SM4)
 			_rtw_memcpy(param->u.crypt.seq, pext->rx_seq, 16);
 		else
-#endif /* CONFIG_WIRELESS_EXT */
+#endif /* CONFIG_IOCTL_CFG80211 */
 #endif /* CONFIG_WAPI_SUPPORT */
 			_rtw_memcpy(param->u.crypt.seq, pext->rx_seq, 8);
 	}
