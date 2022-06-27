@@ -1,5 +1,5 @@
-linux-4.19.248-phytium (4.19.248-phytium-1) bullseye; urgency=low
+linux-4.19.249-phytium (4.19.249-phytium-1) bullseye; urgency=low
 
   * Custom built Linux kernel.
 
- -- Wei Mingzhi <whistler@member.fsf.org>  Sun, 19 Jun 2022 11:01:00 +0800
+ -- Wei Mingzhi <whistler@member.fsf.org>  Mon, 27 Jun 2022 14:13:00 +0800

@@ -1,13 +1,13 @@
 #!/usr/bin/make -f
 
 .config:
-	$(MAKE) KERNELRELEASE=4.19.248-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC= defconfig
+	$(MAKE) KERNELRELEASE=4.19.249-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC= defconfig
 
 build: .config
-	$(MAKE) -j$(shell nproc) KERNELRELEASE=4.19.248-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC=
+	$(MAKE) -j$(shell nproc) KERNELRELEASE=4.19.249-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC=
 
 binary-arch:
-	$(MAKE) KERNELRELEASE=4.19.248-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC= intdeb-pkg
+	$(MAKE) KERNELRELEASE=4.19.249-phytium ARCH=arm64 KBUILD_BUILD_VERSION=1 KBUILD_SRC= intdeb-pkg
 
 clean:
 	$(MAKE) clean
