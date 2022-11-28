@@ -301,6 +301,9 @@ static inline int memblock_get_region_node(const struct memblock_region *r)
 }
 #endif /* CONFIG_HAVE_MEMBLOCK_NODE_MAP */
 
+void *memblock_alloc_exact_nid_raw(phys_addr_t size, phys_addr_t align,
+				 phys_addr_t min_addr, phys_addr_t max_addr,
+				 int nid);
 phys_addr_t memblock_alloc_nid(phys_addr_t size, phys_addr_t align, int nid);
 phys_addr_t memblock_alloc_try_nid(phys_addr_t size, phys_addr_t align, int nid);
 

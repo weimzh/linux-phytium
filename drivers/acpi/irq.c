@@ -13,6 +13,8 @@
 #include <linux/irqdomain.h>
 #include <linux/of.h>
 
+#include "internal.h"
+
 enum acpi_irq_model_id acpi_irq_model;
 
 static struct fwnode_handle *acpi_gsi_domain_id;
@@ -41,6 +43,24 @@ int acpi_gsi_to_irq(u32 gsi, unsigned int *irq)
 }
 EXPORT_SYMBOL_GPL(acpi_gsi_to_irq);
 
+int acpi_register_irq(struct device *dev, u32 hwirq, int trigger,
+		      int polarity, struct fwnode_handle *fwnode)
+{
+	struct irq_fwspec fwspec;
+
+	if (!fwnode) {
+		dev_warn(dev, "No registered irqchip for hwirq %d\n", hwirq);
+		return -EINVAL;
+	}
+
+	fwspec.fwnode = fwnode;
+	fwspec.param[0] = hwirq;
+	fwspec.param[1] = acpi_dev_get_irq_type(trigger, polarity);
+	fwspec.param_count = 2;
+
+	return irq_create_fwspec_mapping(&fwspec);
+}
+
 /**
  * acpi_register_gsi() - Map a GSI to a linux IRQ number
  * @dev: device for which IRQ has to be mapped
@@ -54,19 +74,7 @@ EXPORT_SYMBOL_GPL(acpi_gsi_to_irq);
 int acpi_register_gsi(struct device *dev, u32 gsi, int trigger,
 		      int polarity)
 {
-	struct irq_fwspec fwspec;
-
-	if (WARN_ON(!acpi_gsi_domain_id)) {
-		pr_warn("GSI: No registered irqchip, giving up\n");
-		return -EINVAL;
-	}
-
-	fwspec.fwnode = acpi_gsi_domain_id;
-	fwspec.param[0] = gsi;
-	fwspec.param[1] = acpi_dev_get_irq_type(trigger, polarity);
-	fwspec.param_count = 2;
-
-	return irq_create_fwspec_mapping(&fwspec);
+	return acpi_register_irq(dev, gsi, trigger, polarity, acpi_gsi_domain_id);
 }
 EXPORT_SYMBOL_GPL(acpi_register_gsi);
 
@@ -95,7 +103,7 @@ EXPORT_SYMBOL_GPL(acpi_unregister_gsi);
  * Return:
  * The referenced device fwhandle or NULL on failure
  */
-static struct fwnode_handle *
+struct fwnode_handle *
 acpi_get_irq_source_fwhandle(const struct acpi_resource_source *source)
 {
 	struct fwnode_handle *result;
@@ -295,3 +303,29 @@ void __init acpi_set_irq_model(enum acpi_irq_model_id model,
 	acpi_irq_model = model;
 	acpi_gsi_domain_id = fwnode;
 }
+
+/**
+ * acpi_irq_create_hierarchy - Create a hierarchical IRQ domain with the default
+ *                             GSI domain as its parent.
+ * @flags:      Irq domain flags associated with the domain
+ * @size:       Size of the domain.
+ * @fwnode:     Optional fwnode of the interrupt controller
+ * @ops:        Pointer to the interrupt domain callbacks
+ * @host_data:  Controller private data pointer
+ */
+struct irq_domain *acpi_irq_create_hierarchy(unsigned int flags,
+					     unsigned int size,
+					     struct fwnode_handle *fwnode,
+					     const struct irq_domain_ops *ops,
+					     void *host_data)
+{
+	struct irq_domain *d = irq_find_matching_fwnode(acpi_gsi_domain_id,
+							DOMAIN_BUS_ANY);
+
+	if (!d)
+		return NULL;
+
+	return irq_domain_create_hierarchy(d, flags, size, fwnode, ops,
+					   host_data);
+}
+EXPORT_SYMBOL_GPL(acpi_irq_create_hierarchy);

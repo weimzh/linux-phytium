@@ -945,3 +945,21 @@ config MMC_SDHCI_OMAP
 	  If you have a controller with this interface, say Y or M here.
 
 	  If unsure, say N.
+
+config MMC_PHYTIUM_SDCI
+        tristate "Phytium FT SD Host Controller support"
+        depends on ARM64
+        help
+            This selects support for the Phytium FT4C SD Host Controller
+
+config MMC_PHYTIUM_MCI_PCI
+	tristate "Phytium octopus PCI MultiMedia Card Interface support"
+	depends on ARCH_PHYTIUM
+	default y if ARCH_PHYTIUM
+	help
+	  This selects support for the PCI MultiMedia Card Interface on Phytium
+	  X100 chipset.
+
+	  If you have a controller with this interface, say Y or M here.
+
+	  If unsure, say N.

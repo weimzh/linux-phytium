@@ -285,6 +285,17 @@ config MTD_NAND_ATMEL
 	  Enables support for NAND Flash / Smart Media Card interface
 	  on Atmel AT91 processors.
 
+config MTD_NAND_PHYTIUM
+	tristate
+
+config MTD_NAND_PHYTIUM_PCI
+	tristate "Support Phytium NAND controller as a PCI device"
+	select MTD_NAND_PHYTIUM
+	depends on PCI
+	help
+	  Enable the driver for NAND flash controller on Phytium X100 chipset,
+	  using the Phytium NAND controller core.
+
 config MTD_NAND_MARVELL
 	tristate "NAND controller support on Marvell boards"
 	depends on PXA3xx || ARCH_MMP || PLAT_ORION || ARCH_MVEBU || \

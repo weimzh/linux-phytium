@@ -53,8 +53,14 @@
 
 #include <linux/amba/bus.h>
 
+#include <asm/cputype.h>
+
 #include "io-pgtable.h"
 #include "arm-smmu-regs.h"
+
+#ifdef CONFIG_ARCH_PHYTIUM
+#define FWID_READ(id) (((u16)(id) >> 3) | (((id) >> SMR_MASK_SHIFT | 0x7000) << SMR_MASK_SHIFT))
+#endif
 
 /*
  * Apparently, some Qualcomm arm64 platforms which appear to expose their SMMU
@@ -1391,6 +1397,17 @@ static int arm_smmu_add_device(struct device *dev)
 	} else {
 		return -ENODEV;
 	}
+
+#ifdef CONFIG_ARCH_PHYTIUM
+	/* FT2000PLUS workaround patch */
+        if ((read_cpuid_id() & MIDR_CPU_MODEL_MASK) == MIDR_PHYTIUM_FT2000PLUS) {
+		int num = fwspec->num_ids;
+		for (i = 0; i < num; i++) {
+			u32 fwid = FWID_READ(fwspec->ids[i]);
+			iommu_fwspec_add_ids(dev, &fwid, 1);
+		}
+	}
+#endif
 
 	ret = -EINVAL;
 	for (i = 0; i < fwspec->num_ids; i++) {

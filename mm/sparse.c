@@ -17,6 +17,8 @@
 #include <asm/pgalloc.h>
 #include <asm/pgtable.h>
 
+#include <linux/memblock.h>
+
 /*
  * Permanent SPARSEMEM data:
  *
@@ -405,7 +407,7 @@ static void __init sparse_buffer_init(unsigned long size, int nid)
 {
 	WARN_ON(sparsemap_buf);	/* forgot to call sparse_buffer_fini()? */
 	sparsemap_buf =
-		memblock_virt_alloc_try_nid_raw(size, PAGE_SIZE,
+		memblock_alloc_exact_nid_raw(size, section_map_size(),
 						__pa(MAX_DMA_ADDRESS),
 						BOOTMEM_ALLOC_ACCESSIBLE, nid);
 	sparsemap_buf_end = sparsemap_buf + size;

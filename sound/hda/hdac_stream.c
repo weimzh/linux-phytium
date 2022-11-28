@@ -51,7 +51,11 @@ void snd_hdac_stream_start(struct hdac_stream *azx_dev, bool fresh_start)
 
 	trace_snd_hdac_stream_start(bus, azx_dev);
 
+#ifdef CONFIG_SND_HDA_PHYTIUM
+	azx_dev->start_wallclk = snd_hdac_chip_readl(bus, WALLCLK) / 15;
+#else
 	azx_dev->start_wallclk = snd_hdac_chip_readl(bus, WALLCLK);
+#endif
 	if (!fresh_start)
 		azx_dev->start_wallclk -= azx_dev->period_wallclk;
 
@@ -469,7 +473,11 @@ static u64 azx_cc_read(const struct cyclecounter *cc)
 {
 	struct hdac_stream *azx_dev = container_of(cc, struct hdac_stream, cc);
 
+#ifdef CONFIG_SND_HDA_PHYTIUM
+	return snd_hdac_chip_readl(azx_dev->bus, WALLCLK) / 25;
+#else
 	return snd_hdac_chip_readl(azx_dev->bus, WALLCLK);
+#endif
 }
 
 static void azx_timecounter_init(struct hdac_stream *azx_dev,

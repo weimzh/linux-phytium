@@ -119,6 +119,30 @@ config CAN_JANZ_ICAN3
 	  This driver can also be built as a module. If so, the module will be
 	  called janz-ican3.ko.
 
+config CAN_PHYTIUM_CORE
+	tristate "Phytium CAN controller core driver"
+
+config CAN_PHYTIUM_PLAT
+	tristate "Phytium CAN platform support"
+	select CAN_PHYTIUM_CORE
+	depends on ARCH_PHYTIUM || COMPILE_TEST
+	default y if ARCH_PHYTIUM
+	---help---
+	  This driver supports for the on-chip Phytium CAN controller found on
+	  FT-2000/4 and D2000 SoCs.
+
+	  To compile this driver as a module, choose M here.
+
+config CAN_PHYTIUM_PCI
+	tristate "Phytium CAN PCI support"
+	select CAN_PHYTIUM_CORE
+	depends on PCI || COMPILE_TEST
+	---help---
+	  This driver is for Phytium CAN controller of X100 chipset which
+	  is a PCI device.
+
+	  To compile this driver as a module, choose M here.
+
 config CAN_SUN4I
 	tristate "Allwinner A10 CAN controller"
 	depends on MACH_SUN4I || MACH_SUN7I || COMPILE_TEST

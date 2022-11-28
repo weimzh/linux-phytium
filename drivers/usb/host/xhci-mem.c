@@ -2158,6 +2158,10 @@ static void xhci_add_in_port(struct xhci_hcd *xhci, unsigned int num_ports,
 	if (rhub->min_rev < minor_revision)
 		rhub->min_rev = minor_revision;
 
+	if (xhci->quirks & XHCI_SLOWDOWN_QUIRK)
+		if (major_revision == 0x03)
+			rhub->min_rev = 0;
+
 	/* Port offset and count in the third dword, see section 7.2 */
 	temp = readl(addr + 2);
 	port_offset = XHCI_EXT_PORT_OFF(temp);
