@@ -114,6 +114,7 @@ static const struct mbox_chan_ops phytium_mbox_ops = {
 
 static const struct acpi_device_id phytium_mbox_acpi_match[] = {
 	{ "PHYT0009", 0 },
+	{ "FTMB0001", 0 },
 	{ },
 };
 MODULE_DEVICE_TABLE(acpi, phytium_mbox_acpi_match);

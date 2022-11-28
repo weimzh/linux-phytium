@@ -103,6 +103,7 @@ static int scpi_cpufreq_init(struct cpufreq_policy *policy)
 	struct device *cpu_dev;
 	struct scpi_data *priv;
 	struct cpufreq_frequency_table *freq_table;
+	const char *cpu_clockname;
 
 	cpu_dev = get_cpu_device(policy->cpu);
 	if (!cpu_dev) {
@@ -149,7 +150,17 @@ static int scpi_cpufreq_init(struct cpufreq_policy *policy)
 	}
 
 	priv->cpu_dev = cpu_dev;
-	priv->clk = clk_get(cpu_dev, NULL);
+	if (cpu_dev->of_node) {
+		priv->clk = clk_get(cpu_dev, NULL);
+	} else {
+		ret = device_property_read_string(cpu_dev, "clock-name", &cpu_clockname);
+		if (ret) {
+			dev_err(cpu_dev,"Failed to get scpi clk name for cpu: %d\n", cpu_dev->id);
+			goto out_free_cpufreq_table;
+		}
+		priv->clk = clk_get(NULL, cpu_clockname);
+	}
+
 	if (IS_ERR(priv->clk)) {
 		dev_err(cpu_dev, "%s: Failed to get clk for cpu: %d\n",
 			__func__, cpu_dev->id);

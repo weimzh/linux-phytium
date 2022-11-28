@@ -1,0 +1,5 @@
+config GWNB
+	tristate "GreatWall Notebook EC"
+	---help---
+	  Help message of GWNB
+

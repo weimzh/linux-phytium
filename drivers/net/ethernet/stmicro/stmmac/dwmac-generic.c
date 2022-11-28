@@ -95,6 +95,7 @@ MODULE_DEVICE_TABLE(of, dwmac_generic_match);
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id dwmac_acpi_ids[] = {
 	{ .id = "PHYT0004" },
+	{ .id = "FTGM0001" },
 	{},
 };
 

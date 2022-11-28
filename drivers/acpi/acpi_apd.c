@@ -241,6 +241,7 @@ static const struct acpi_device_id acpi_apd_device_ids[] = {
 	{ "HISI02A1", APD_ADDR(hip07_i2c_desc) },
 	{ "HISI02A2", APD_ADDR(hip08_i2c_desc) },
 	{ "PHYT0003", APD_ADDR(phytium_i2c_desc) },
+	{ "FTI20001", APD_ADDR(phytium_i2c_desc) },
 #endif
 	{ }
 };

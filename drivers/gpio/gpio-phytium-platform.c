@@ -41,6 +41,7 @@ MODULE_DEVICE_TABLE(of, phytium_gpio_of_match);
 
 static const struct acpi_device_id phytium_gpio_acpi_match[] = {
 	{ "PHYT0001", 0 },
+	{ "FTGP0001", 0 },
 	{ }
 };
 MODULE_DEVICE_TABLE(acpi, phytium_gpio_acpi_match);
