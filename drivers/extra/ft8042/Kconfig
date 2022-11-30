@@ -1,0 +1,5 @@
+config FT8042
+	tristate "Phytium 8042"
+	---help---
+	  Help message of FT8042
+
