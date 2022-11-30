@@ -18,5 +18,5 @@ uninstall:
 	rm -rf /lib/modules/$(shell uname -r)/kernel/drivers/misc/ft8042.ko
 	depmod -a
 else
-	obj-y := ft8042.o
+	obj-$(CONFIG_FT8042) := ft8042.o
 endif

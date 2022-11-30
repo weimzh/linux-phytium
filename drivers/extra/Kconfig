@@ -11,4 +11,6 @@ config EXTRA
 
 if EXTRA
 source "drivers/extra/rtl8821ce/Kconfig"
+source "drivers/extra/gwnb/Kconfig"
+source "drivers/extra/ft8042/Kconfig"
 endif
