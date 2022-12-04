@@ -18,5 +18,5 @@ uninstall:
 	rm -rf /lib/modules/$(shell uname -r)/kernel/drivers/misc/gwnb_power.ko
 	depmod -a
 else
-	obj-m := gwnb_power.o
+	obj-$(CONFIG_GWNB) := gwnb_power.o
 endif
