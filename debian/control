@@ -1,20 +1,20 @@
-Source: linux-4.19.267-phytium
+Source: linux-4.19.269-phytium
 Section: kernel
 Priority: optional
 Maintainer: Wei Mingzhi <whistler@member.fsf.org>
 Build-Depends: bc, kmod, cpio, flex, bison, libssl-dev
 Homepage: http://www.kernel.org/
 
-Package: linux-image-4.19.267-phytium
+Package: linux-image-4.19.269-phytium
 Architecture: arm64
 Description: Linux kernel, version 4.19.0-phytium
  This package contains the Linux kernel, modules and corresponding other
- files, version: 4.19.267-phytium.
+ files, version: 4.19.269-phytium.
 
-Package: linux-headers-4.19.267-phytium
+Package: linux-headers-4.19.269-phytium
 Architecture: arm64
-Description: Linux kernel headers for 4.19.267-phytium on arm64
- This package provides kernel header files for 4.19.267-phytium on arm64
+Description: Linux kernel headers for 4.19.269-phytium on arm64
+ This package provides kernel header files for 4.19.269-phytium on arm64
  .
  This is useful for people who need to build external modules
 
@@ -26,9 +26,9 @@ Description: Linux support headers for userspace development
  This package provides userspaces headers from the Linux kernel.  These headers
  are used by the installed headers for GNU glibc and other system libraries.
 
-Package: linux-image-4.19.267-phytium-dbg
+Package: linux-image-4.19.269-phytium-dbg
 Section: debug
 Architecture: arm64
-Description: Linux kernel debugging symbols for 4.19.267-phytium
+Description: Linux kernel debugging symbols for 4.19.269-phytium
  This package will come in handy if you need to debug the kernel. It provides
  all the necessary debug symbols for the kernel and its modules.
